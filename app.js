@@ -1,17 +1,23 @@
+if(process.env.NODE_ENV !== "production")
+    require('dotenv').config()
 const express = require("express");
 const mongoose = require('mongoose');
 const passport =  require("passport")
 const User  = require('./user.js')
 const session = require('express-session')
+const local = require('passport-local')
 mongoose.connect('mongodb://127.0.0.1:27017/User', {useNewUrlParser: true, useUnifiedTopology: true});
 const app = express();
 app.use((req, res, next) => {
     console.log(`${req.method} request for ${req.url}`);
+    res.locals.user = req.user
     next();
   });
 
 app.use(express.json());
 app.use(passport.initialize());
+
+
 const port = 3000;
 var GoogleStrategy = require('passport-google-oauth20').Strategy;
 const configSession = {
@@ -28,6 +34,7 @@ const configSession = {
     }
   }
 app.use(session(configSession))
+app.use(passport.session())
 passport.serializeUser(function(user, done) {
     done(null, user);
   });
@@ -49,12 +56,18 @@ passport.use(new GoogleStrategy({
 ));
 
 
+passport.use(new local(User.authenticate()))
+// passport.serializeUser(User.serializeUser())
+// passport.deserializeUser(User.deserializeUser())
+
+
 app.get('/auth/google',
   passport.authenticate('google', { scope: ['profile'] }));
 
 app.get('/auth/google/callback', 
   passport.authenticate('google', { failureRedirect: '/login' }),
   function(req, res) {
+    console.log(req.user)
     // Successful authentication, redirect home.
     res.redirect('/');
   });
@@ -80,10 +93,12 @@ app.get('/auth/google/callback',
     }  
   })
   app.get('/',(req,res)=>{
+    console.log(req.user)
     res.send('log in success')
   }) 
-  app.post('/login',(req,res)=>{
-    passport.authenticate('local',{failureFlash:true,failureRedirect:'/login',keepSessionInfo: true})
+  app.post('/login',passport.authenticate('local',{failureRedirect:'/login',keepSessionInfo: true}),
+  (req,res)=>{
+    
     res.redirect('/')
   })
 
