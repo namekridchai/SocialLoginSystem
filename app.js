@@ -6,8 +6,10 @@ const passport =  require("passport")
 const User  = require('./user.js')
 const session = require('express-session')
 const local = require('passport-local')
+const path = require('path');
 mongoose.connect('mongodb://127.0.0.1:27017/User', {useNewUrlParser: true, useUnifiedTopology: true});
 const app = express();
+app.use(express.urlencoded({extended:true}));
 app.use((req, res, next) => {
     console.log(`${req.method} request for ${req.url}`);
     res.locals.user = req.user
@@ -59,7 +61,8 @@ passport.use(new GoogleStrategy({
 passport.use(new local(User.authenticate()))
 // passport.serializeUser(User.serializeUser())
 // passport.deserializeUser(User.deserializeUser())
-
+app.set('view engine','ejs');
+app.set('views',path.join(__dirname,'/views'));
 
 app.get('/auth/google',
   passport.authenticate('google', { scope: ['profile'] }));
@@ -94,20 +97,26 @@ app.get('/auth/google/callback',
   })
   app.get('/',(req,res)=>{
     console.log(req.user)
-    res.send('log in success')
+    res.send('hello' + req.user.username)
   }) 
-  app.post('/login',passport.authenticate('local',{failureRedirect:'/login',keepSessionInfo: true}),
+  app.post('/login',
+  ((req,res,next)=>{
+   
+    console.log(req.body)
+    next()  
+  }),
+  passport.authenticate('local',{failureRedirect:'/login',keepSessionInfo: true}),
   (req,res)=>{
     
     res.redirect('/')
   })
 
   app.get('/login',(req,res)=>{
-    res.send('please log in')
+    res.render('login')
   })
 
   app.get('/register',(req,res)=>{
-    res.send('please register')
+    res.render('register')
   })
 app.listen(port, () => {
   console.log(`Server running at <http://localhost>:${port}/`);
